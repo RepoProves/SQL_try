@@ -1,0 +1,27 @@
+create or replace PROCEDURE load_contratos(p_fec_carga IN DATE DEFAULT NULL) IS
+        v_fec_carga DATE;
+    BEGIN
+        v_fec_carga := get_fec_carga(p_fec_carga, 'LND_CONTRATO');
+
+        EXECUTE IMMEDIATE 'TRUNCATE TABLE trf_contrato';
+
+        INSERT /*+ APPEND */ INTO trf_contrato (
+            contrato_id,
+            fecha_alta,
+            importe_mensual,
+            estado,
+            tipo_producto,
+            fec_ult_modif
+        )
+        SELECT
+            contrato_id,
+            fecha_alta,
+            importe_mensual,
+            UPPER(estado),
+            UPPER(tipo_producto),
+            SYSDATE
+        FROM lnd_contrato
+        WHERE fec_carga = v_fec_carga;
+
+        COMMIT;
+    END load_contratos;

@@ -1,0 +1,27 @@
+create or replace PROCEDURE load_fct_contrato_persona IS
+    BEGIN
+        EXECUTE IMMEDIATE 'TRUNCATE TABLE usr_fct_contrato_persona';
+
+        INSERT /*+ APPEND */ INTO usr_fct_contrato_persona (
+            contrato_id,
+            persona_id,
+            rol_persona,
+            fecha_alta,
+            importe_mensual,
+            estado,
+            tipo_producto
+        )
+        SELECT
+            cp.contrato_id,
+            cp.persona_id,
+            cp.rol_persona,
+            c.fecha_alta,
+            c.importe_mensual,
+            c.estado,
+            c.tipo_producto
+        FROM trf_contrato_persona cp
+        JOIN trf_contrato c
+          ON c.contrato_id = cp.contrato_id;
+
+        COMMIT;
+    END load_fct_contrato_persona;

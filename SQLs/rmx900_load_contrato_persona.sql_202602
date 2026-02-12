@@ -1,0 +1,23 @@
+create or replace PROCEDURE load_contrato_persona(p_fec_carga IN DATE DEFAULT NULL) IS
+        v_fec_carga DATE;
+    BEGIN
+        v_fec_carga := get_fec_carga(p_fec_carga, 'LND_CONTRATO_PERSONA');
+
+        EXECUTE IMMEDIATE 'TRUNCATE TABLE trf_contrato_persona';
+
+        INSERT /*+ APPEND */ INTO trf_contrato_persona (
+            contrato_id,
+            persona_id,
+            rol_persona,
+            fec_ult_modif
+        )
+        SELECT
+            contrato_id,
+            persona_id,
+            UPPER(rol_persona),
+            SYSDATE
+        FROM lnd_contrato_persona
+        WHERE fec_carga = v_fec_carga;
+
+        COMMIT;
+    END load_contrato_persona;

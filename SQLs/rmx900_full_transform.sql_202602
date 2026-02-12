@@ -1,0 +1,7 @@
+create or replace PROCEDURE full_transform IS
+    BEGIN
+        load_dim_persona;
+        load_dim_contrato;
+        load_fct_contrato_persona;
+        build_aggregates;
+    END full_transform;

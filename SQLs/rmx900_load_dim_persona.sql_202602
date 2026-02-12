@@ -1,0 +1,23 @@
+create or replace PROCEDURE load_dim_persona IS
+    BEGIN
+        EXECUTE IMMEDIATE 'TRUNCATE TABLE usr_dim_persona';
+
+        INSERT /*+ APPEND */ INTO usr_dim_persona (
+            persona_id,
+            nombre,
+            apellido1,
+            apellido2,
+            nif,
+            fecha_nacimiento
+        )
+        SELECT
+            persona_id,
+            nombre,
+            apellido1,
+            apellido2,
+            nif,
+            fecha_nacimiento
+        FROM trf_persona;
+
+        COMMIT;
+    END load_dim_persona;

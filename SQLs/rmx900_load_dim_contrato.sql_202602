@@ -1,0 +1,21 @@
+create or replace PROCEDURE load_dim_contrato IS
+    BEGIN
+        EXECUTE IMMEDIATE 'TRUNCATE TABLE usr_dim_contrato';
+
+        INSERT /*+ APPEND */ INTO usr_dim_contrato (
+            contrato_id,
+            fecha_alta,
+            importe_mensual,
+            estado,
+            tipo_producto
+        )
+        SELECT
+            contrato_id,
+            fecha_alta,
+            importe_mensual,
+            estado,
+            tipo_producto
+        FROM trf_contrato;
+
+        COMMIT;
+    END load_dim_contrato;
