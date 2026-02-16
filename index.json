@@ -1,0 +1,306 @@
+{
+  "objects": {
+    "rmx900_full_transform": {
+      "type": "procedure",
+      "latest_version": "202602",
+      "path": "./SQLs/rmx900_full_transform.sql_202602",
+      "tables": [],
+      "columns": [],
+      "select_blocks": []
+    },
+    "rmx900_build_aggregates": {
+      "type": "procedure",
+      "latest_version": "202602",
+      "path": "./SQLs/rmx900_build_aggregates.sql_202602",
+      "tables": [
+        "USR_FCT_CONTRATO_PERSONA"
+      ],
+      "columns": [
+        "PERSONA_ID",
+        "TIPO_PRODUCTO",
+        "CONTRATO_ID",
+        "SUMIMPORTE_MENSUAL"
+      ],
+      "select_blocks": [
+        {
+          "tables": [
+            "USR_FCT_CONTRATO_PERSONA\n            GROUP BY PERSONA_ID"
+          ],
+          "columns": [
+            "PERSONA_ID",
+            "CONTRATO_ID",
+            "SUMIMPORTE_MENSUAL"
+          ],
+          "snippet": "SELECT\n                persona_id,\n                COUNT(DISTINCT contrato_id) AS num_contratos,\n                SUM(importe_mensual)        AS importe_total\n            FROM usr_fct_contrato_persona\n            GROUP BY persona_id"
+        },
+        {
+          "tables": [
+            "USR_FCT_CONTRATO_PERSONA\n            GROUP BY TIPO_PRODUCTO"
+          ],
+          "columns": [
+            "TIPO_PRODUCTO",
+            "CONTRATO_ID",
+            "SUMIMPORTE_MENSUAL"
+          ],
+          "snippet": "SELECT\n                tipo_producto,\n                COUNT(DISTINCT contrato_id) AS num_contratos,\n                SUM(importe_mensual)        AS importe_total\n            FROM usr_fct_contrato_persona\n            GROUP BY tipo_producto"
+        }
+      ]
+    },
+    "rmx900_load_dim_contrato": {
+      "type": "procedure",
+      "latest_version": "202602",
+      "path": "./SQLs/rmx900_load_dim_contrato.sql_202602",
+      "tables": [
+        "TRF_CONTRATO",
+        "USR_DIM_CONTRATO"
+      ],
+      "columns": [
+        "TIPO_PRODUCTO",
+        "IMPORTE_MENSUAL",
+        "CONTRATO_ID",
+        "ESTADO",
+        "FECHA_ALTA"
+      ],
+      "select_blocks": [
+        {
+          "tables": [
+            "TRF_CONTRATO"
+          ],
+          "columns": [
+            "CONTRATO_ID",
+            "FECHA_ALTA",
+            "IMPORTE_MENSUAL",
+            "ESTADO",
+            "TIPO_PRODUCTO"
+          ],
+          "snippet": "SELECT\n            contrato_id,\n            fecha_alta,\n            importe_mensual,\n            estado,\n            tipo_producto\n        FROM trf_contrato"
+        }
+      ]
+    },
+    "rmx900_load_contratos": {
+      "type": "procedure",
+      "latest_version": "202602",
+      "path": "./SQLs/rmx900_load_contratos.sql_202602",
+      "tables": [
+        "TRF_CONTRATO",
+        "LND_CONTRATO"
+      ],
+      "columns": [
+        "TIPO_PRODUCTO",
+        "UPPERTIPO_PRODUCTO",
+        "IMPORTE_MENSUAL",
+        "CONTRATO_ID",
+        "ESTADO",
+        "SYSDATE",
+        "FECHA_ALTA",
+        "FEC_ULT_MODIF",
+        "UPPERESTADO"
+      ],
+      "select_blocks": [
+        {
+          "tables": [
+            "LND_CONTRATO\n        WHERE FEC_CARGA"
+          ],
+          "columns": [
+            "CONTRATO_ID",
+            "FECHA_ALTA",
+            "IMPORTE_MENSUAL",
+            "UPPERESTADO",
+            "UPPERTIPO_PRODUCTO",
+            "SYSDATE"
+          ],
+          "snippet": "SELECT\n            contrato_id,\n            fecha_alta,\n            importe_mensual,\n            UPPER(estado),\n            UPPER(tipo_producto),\n            SYSDATE\n        FROM lnd_contrato\n        WHERE fec_carga"
+        }
+      ]
+    },
+    "rmx900_load_fct_contrato_persona": {
+      "type": "procedure",
+      "latest_version": "202602",
+      "path": "./SQLs/rmx900_load_fct_contrato_persona.sql_202602",
+      "tables": [
+        "TRF_CONTRATO",
+        "USR_FCT_CONTRATO_PERSONA",
+        "TRF_CONTRATO_PERSONA"
+      ],
+      "columns": [
+        "CP.ROL_PERSONA",
+        "TIPO_PRODUCTO",
+        "ROL_PERSONA",
+        "CP.PERSONA_ID",
+        "C.IMPORTE_MENSUAL",
+        "IMPORTE_MENSUAL",
+        "CONTRATO_ID",
+        "PERSONA_ID",
+        "C.FECHA_ALTA",
+        "ESTADO",
+        "CP.CONTRATO_ID",
+        "C.TIPO_PRODUCTO",
+        "C.ESTADO",
+        "FECHA_ALTA"
+      ],
+      "select_blocks": [
+        {
+          "tables": [
+            "TRF_CONTRATO_PERSONA CP\n        JOIN TRF_CONTRATO C\n          ON C"
+          ],
+          "columns": [
+            "CP.CONTRATO_ID",
+            "CP.PERSONA_ID",
+            "CP.ROL_PERSONA",
+            "C.FECHA_ALTA",
+            "C.IMPORTE_MENSUAL",
+            "C.ESTADO",
+            "C.TIPO_PRODUCTO"
+          ],
+          "snippet": "SELECT\n            cp.contrato_id,\n            cp.persona_id,\n            cp.rol_persona,\n            c.fecha_alta,\n            c.importe_mensual,\n            c.estado,\n            c.tipo_producto\n        FROM trf_contrato_persona cp\n        JOIN trf_contrato c\n          ON c"
+        }
+      ]
+    },
+    "rmx900_load_dim_persona": {
+      "type": "procedure",
+      "latest_version": "202602",
+      "path": "./SQLs/rmx900_load_dim_persona.sql_202602",
+      "tables": [
+        "USR_DIM_PERSONA",
+        "TRF_PERSONA"
+      ],
+      "columns": [
+        "NIF",
+        "NOMBRE",
+        "FECHA_NACIMIENTO",
+        "APELLIDO1",
+        "PERSONA_ID",
+        "APELLIDO2"
+      ],
+      "select_blocks": [
+        {
+          "tables": [
+            "TRF_PERSONA"
+          ],
+          "columns": [
+            "PERSONA_ID",
+            "NOMBRE",
+            "APELLIDO1",
+            "APELLIDO2",
+            "NIF",
+            "FECHA_NACIMIENTO"
+          ],
+          "snippet": "SELECT\n            persona_id,\n            nombre,\n            apellido1,\n            apellido2,\n            nif,\n            fecha_nacimiento\n        FROM trf_persona"
+        }
+      ]
+    },
+    "rmx900_load_contrato_persona": {
+      "type": "procedure",
+      "latest_version": "202602",
+      "path": "./SQLs/rmx900_load_contrato_persona.sql_202602",
+      "tables": [
+        "LND_CONTRATO_PERSONA",
+        "TRF_CONTRATO_PERSONA"
+      ],
+      "columns": [
+        "ROL_PERSONA",
+        "UPPERROL_PERSONA",
+        "CONTRATO_ID",
+        "PERSONA_ID",
+        "SYSDATE",
+        "FEC_ULT_MODIF"
+      ],
+      "select_blocks": [
+        {
+          "tables": [
+            "LND_CONTRATO_PERSONA\n        WHERE FEC_CARGA"
+          ],
+          "columns": [
+            "CONTRATO_ID",
+            "PERSONA_ID",
+            "UPPERROL_PERSONA",
+            "SYSDATE"
+          ],
+          "snippet": "SELECT\n            contrato_id,\n            persona_id,\n            UPPER(rol_persona),\n            SYSDATE\n        FROM lnd_contrato_persona\n        WHERE fec_carga"
+        }
+      ]
+    },
+    "rmx900_load_personas": {
+      "type": "procedure",
+      "latest_version": "202602",
+      "path": "./SQLs/rmx900_load_personas.sql_202602",
+      "tables": [
+        "TRF_PERSONA",
+        "LND_PERSONA"
+      ],
+      "columns": [
+        "NIF",
+        "UPPERNIF",
+        "NOMBRE",
+        "FECHA_NACIMIENTO",
+        "TRIMNOMBRE",
+        "APELLIDO1",
+        "PERSONA_ID",
+        "SYSDATE",
+        "TRIMAPELLIDO1",
+        "APELLIDO2",
+        "FEC_ULT_MODIF",
+        "TRIMAPELLIDO2"
+      ],
+      "select_blocks": [
+        {
+          "tables": [
+            "LND_PERSONA\n        WHERE FEC_CARGA"
+          ],
+          "columns": [
+            "PERSONA_ID",
+            "TRIMNOMBRE",
+            "TRIMAPELLIDO1",
+            "TRIMAPELLIDO2",
+            "UPPERNIF",
+            "FECHA_NACIMIENTO",
+            "SYSDATE"
+          ],
+          "snippet": "SELECT\n            persona_id,\n            TRIM(nombre),\n            TRIM(apellido1),\n            TRIM(apellido2),\n            UPPER(nif),\n            fecha_nacimiento,\n            SYSDATE\n        FROM lnd_persona\n        WHERE fec_carga"
+        }
+      ]
+    },
+    "rmx900_full_load": {
+      "type": "procedure",
+      "latest_version": "202602",
+      "path": "./SQLs/rmx900_full_load.sql_202602",
+      "tables": [],
+      "columns": [],
+      "select_blocks": []
+    }
+  },
+  "table_usage": {
+    "USR_FCT_CONTRATO_PERSONA": [
+      "rmx900_build_aggregates",
+      "rmx900_load_fct_contrato_persona"
+    ],
+    "TRF_CONTRATO": [
+      "rmx900_load_dim_contrato",
+      "rmx900_load_contratos",
+      "rmx900_load_fct_contrato_persona"
+    ],
+    "USR_DIM_CONTRATO": [
+      "rmx900_load_dim_contrato"
+    ],
+    "LND_CONTRATO": [
+      "rmx900_load_contratos"
+    ],
+    "TRF_CONTRATO_PERSONA": [
+      "rmx900_load_fct_contrato_persona",
+      "rmx900_load_contrato_persona"
+    ],
+    "USR_DIM_PERSONA": [
+      "rmx900_load_dim_persona"
+    ],
+    "TRF_PERSONA": [
+      "rmx900_load_dim_persona",
+      "rmx900_load_personas"
+    ],
+    "LND_CONTRATO_PERSONA": [
+      "rmx900_load_contrato_persona"
+    ],
+    "LND_PERSONA": [
+      "rmx900_load_personas"
+    ]
+  }
+}
