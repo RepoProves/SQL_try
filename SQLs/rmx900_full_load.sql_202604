@@ -1,0 +1,6 @@
+create or replace PROCEDURE full_load(p_fec_carga IN DATE DEFAULT NULL) IS
+BEGIN
+    load_personas(p_fec_carga);
+    load_contratos(p_fec_carga);
+    load_contrato_persona(p_fec_carga);
+END full_load;

@@ -1,0 +1,73 @@
+create or replace PROCEDURE load_dim_contrato IS
+    v_partition_name VARCHAR2(20);
+    v_next_month DATE;
+    v_partition_exists NUMBER;
+    v_superior_exists NUMBER;
+    v_has_pamax NUMBER;
+BEGIN
+    EXECUTE IMMEDIATE 'TRUNCATE TABLE usr_au_dim_contrato';
+
+    INSERT /*+ APPEND */ INTO usr_au_dim_contrato (
+        contrato_id,
+        fecha_alta,
+        importe_mensual,
+        estado,
+        tipo_producto
+    )
+    SELECT
+        contrato_id,
+        fecha_alta,
+        importe_mensual,
+        estado,
+        tipo_producto
+    FROM trf_contrato;
+
+    COMMIT;
+
+    SELECT 'PA_' || TO_CHAR(MAX(fecha_alta), 'YYYYMM')
+    INTO v_partition_name
+    FROM usr_au_dim_contrato;
+
+    SELECT COUNT(*)
+    INTO v_partition_exists
+    FROM user_tab_partitions
+    WHERE table_name = 'USR_DIM_CONTRATO'
+      AND partition_name = v_partition_name;
+
+    SELECT COUNT(*)
+    INTO v_superior_exists
+    FROM user_tab_partitions
+    WHERE table_name = 'USR_DIM_CONTRATO'
+      AND partition_name = 'SUPERIOR';
+
+    IF v_superior_exists = 0 THEN
+        SELECT COUNT(*)
+        INTO v_has_pamax
+        FROM user_tab_partitions
+        WHERE table_name = 'USR_DIM_CONTRATO'
+          AND partition_name = 'PA_MAXVALUE';
+
+        IF v_has_pamax > 0 THEN
+            EXECUTE IMMEDIATE 'ALTER TABLE usr_dim_contrato RENAME PARTITION PA_MAXVALUE TO SUPERIOR';
+        ELSE
+            BEGIN
+                EXECUTE IMMEDIATE 'ALTER TABLE usr_dim_contrato ADD PARTITION SUPERIOR VALUES LESS THAN (MAXVALUE)';
+            EXCEPTION
+                WHEN OTHERS THEN
+                    NULL;
+            END;
+        END IF;
+    END IF;
+
+    IF v_partition_exists = 0 THEN
+        SELECT ADD_MONTHS(TRUNC(MAX(fecha_alta), 'MM'), 1)
+        INTO v_next_month
+        FROM usr_au_dim_contrato;
+
+        EXECUTE IMMEDIATE 'ALTER TABLE usr_dim_contrato SPLIT PARTITION SUPERIOR AT (DATE ''' || TO_CHAR(v_next_month, 'YYYY-MM-DD') || ''') INTO (PARTITION ' || v_partition_name || ', PARTITION SUPERIOR)';
+    END IF;
+
+    EXECUTE IMMEDIATE 'ALTER TABLE usr_dim_contrato EXCHANGE PARTITION ' || v_partition_name || ' WITH TABLE usr_au_dim_contrato';
+
+    COMMIT;
+END load_dim_contrato;

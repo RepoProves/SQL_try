@@ -1,0 +1,85 @@
+-- Versión 202604: Optimización con tabla auxiliar y exchange partition
+-- El procedimiento asume que trf_contrato y trf_au_contrato existen y están particionados por fecha_alta
+create or replace PROCEDURE load_contratos(p_fec_carga IN DATE DEFAULT NULL) IS
+    v_fec_carga DATE;
+    v_partition_name VARCHAR2(20);
+    v_next_month DATE;
+    v_partition_exists NUMBER;
+    v_superior_exists NUMBER;
+    v_has_pamax NUMBER;
+BEGIN
+    v_fec_carga := get_fec_carga(p_fec_carga, 'LND_CONTRATO');
+
+    EXECUTE IMMEDIATE 'TRUNCATE TABLE trf_au_contrato';
+
+    INSERT /*+ APPEND */ INTO trf_au_contrato (
+        contrato_id,
+        fecha_alta,
+        importe_mensual,
+        estado,
+        tipo_producto,
+        fec_ult_modif
+    )
+    SELECT
+        contrato_id,
+        fecha_alta,
+        importe_mensual,
+        UPPER(estado),
+        UPPER(tipo_producto),
+        SYSDATE
+    FROM lnd_contrato
+    WHERE fec_carga = v_fec_carga;
+
+    COMMIT;
+
+    SELECT 'PA_' || TO_CHAR(MAX(fecha_alta), 'YYYYMM')
+    INTO v_partition_name
+    FROM trf_au_contrato;
+
+    IF v_partition_name IS NULL OR v_partition_name = 'PA_' THEN
+        RETURN;
+    END IF;
+
+    SELECT COUNT(*)
+    INTO v_partition_exists
+    FROM user_tab_partitions
+    WHERE table_name = 'TRF_CONTRATO'
+      AND partition_name = v_partition_name;
+
+    SELECT COUNT(*)
+    INTO v_superior_exists
+    FROM user_tab_partitions
+    WHERE table_name = 'TRF_CONTRATO'
+      AND partition_name = 'SUPERIOR';
+
+    IF v_superior_exists = 0 THEN
+        SELECT COUNT(*)
+        INTO v_has_pamax
+        FROM user_tab_partitions
+        WHERE table_name = 'TRF_CONTRATO'
+          AND partition_name = 'PA_MAXVALUE';
+
+        IF v_has_pamax > 0 THEN
+            EXECUTE IMMEDIATE 'ALTER TABLE trf_contrato RENAME PARTITION PA_MAXVALUE TO SUPERIOR';
+        ELSE
+            BEGIN
+                EXECUTE IMMEDIATE 'ALTER TABLE trf_contrato ADD PARTITION SUPERIOR VALUES LESS THAN (MAXVALUE)';
+            EXCEPTION
+                WHEN OTHERS THEN
+                    NULL;
+            END;
+        END IF;
+    END IF;
+
+    IF v_partition_exists = 0 THEN
+        SELECT ADD_MONTHS(TRUNC(MAX(fecha_alta), 'MM'), 1)
+        INTO v_next_month
+        FROM trf_au_contrato;
+
+        EXECUTE IMMEDIATE 'ALTER TABLE trf_contrato SPLIT PARTITION SUPERIOR AT (DATE ''' || TO_CHAR(v_next_month, 'YYYY-MM-DD') || ''') INTO (PARTITION ' || v_partition_name || ', PARTITION SUPERIOR)';
+    END IF;
+
+    EXECUTE IMMEDIATE 'ALTER TABLE trf_contrato EXCHANGE PARTITION ' || v_partition_name || ' WITH TABLE trf_au_contrato';
+
+    COMMIT;
+END load_contratos;
