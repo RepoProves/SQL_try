@@ -1,0 +1,82 @@
+-- Versión 202605: Añadido campo INDCOSA de tipo NUMBER
+create or replace PROCEDURE load_fct_contrato_persona IS
+    v_partition_name VARCHAR2(20);
+    v_next_month DATE;
+    v_partition_exists NUMBER;
+    v_superior_exists NUMBER;
+    v_has_pamax NUMBER;
+BEGIN
+    EXECUTE IMMEDIATE 'TRUNCATE TABLE usr_au_fct_contrato_persona';
+
+    INSERT /*+ APPEND */ INTO usr_au_fct_contrato_persona (
+        contrato_id,
+        persona_id,
+        rol_persona,
+        fecha_alta,
+        importe_mensual,
+        estado,
+        tipo_producto,
+        INDCOSA
+    )
+    SELECT
+        cp.contrato_id,
+        cp.persona_id,
+        cp.rol_persona,
+        c.fecha_alta,
+        c.importe_mensual,
+        c.estado,
+        c.tipo_producto,
+        cp.INDCOSA
+    FROM trf_contrato_persona cp
+    JOIN trf_contrato c
+      ON c.contrato_id = cp.contrato_id;
+
+    COMMIT;
+
+    SELECT 'PA_' || TO_CHAR(MAX(fecha_alta), 'YYYYMM')
+    INTO v_partition_name
+    FROM usr_au_fct_contrato_persona;
+
+    SELECT COUNT(*)
+    INTO v_partition_exists
+    FROM user_tab_partitions
+    WHERE table_name = 'USR_FCT_CONTRATO_PERSONA'
+      AND partition_name = v_partition_name;
+
+    SELECT COUNT(*)
+    INTO v_superior_exists
+    FROM user_tab_partitions
+    WHERE table_name = 'USR_FCT_CONTRATO_PERSONA'
+      AND partition_name = 'SUPERIOR';
+
+    IF v_superior_exists = 0 THEN
+        SELECT COUNT(*)
+        INTO v_has_pamax
+        FROM user_tab_partitions
+        WHERE table_name = 'USR_FCT_CONTRATO_PERSONA'
+          AND partition_name = 'PA_MAXVALUE';
+
+        IF v_has_pamax > 0 THEN
+            EXECUTE IMMEDIATE 'ALTER TABLE usr_fct_contrato_persona RENAME PARTITION PA_MAXVALUE TO SUPERIOR';
+        ELSE
+            BEGIN
+                EXECUTE IMMEDIATE 'ALTER TABLE usr_fct_contrato_persona ADD PARTITION SUPERIOR VALUES LESS THAN (MAXVALUE)';
+            EXCEPTION
+                WHEN OTHERS THEN
+                    NULL;
+            END;
+        END IF;
+    END IF;
+
+    IF v_partition_exists = 0 THEN
+        SELECT ADD_MONTHS(TRUNC(MAX(fecha_alta), 'MM'), 1)
+        INTO v_next_month
+        FROM usr_au_fct_contrato_persona;
+
+        EXECUTE IMMEDIATE 'ALTER TABLE usr_fct_contrato_persona SPLIT PARTITION SUPERIOR AT (DATE ''' || TO_CHAR(v_next_month, 'YYYY-MM-DD') || ''') INTO (PARTITION ' || v_partition_name || ', PARTITION SUPERIOR)';
+    END IF;
+
+    EXECUTE IMMEDIATE 'ALTER TABLE usr_fct_contrato_persona EXCHANGE PARTITION ' || v_partition_name || ' WITH TABLE usr_au_fct_contrato_persona';
+
+    COMMIT;
+END load_fct_contrato_persona;

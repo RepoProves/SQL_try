@@ -1,3 +1,4 @@
+-- Versión 202605: Añadido campo INDCOSA de tipo NUMBER
 create or replace PROCEDURE load_dim_persona IS
     v_partition_name VARCHAR2(20);
     v_next_month DATE;
@@ -13,7 +14,8 @@ BEGIN
         apellido1,
         apellido2,
         nif,
-        fecha_nacimiento
+        fecha_nacimiento,
+        INDCOSA
     )
     SELECT
         persona_id,
@@ -21,7 +23,8 @@ BEGIN
         apellido1,
         apellido2,
         nif,
-        fecha_nacimiento
+        fecha_nacimiento,
+        INDCOSA
     FROM trf_persona;
 
     COMMIT;

@@ -1,0 +1,45 @@
+-- Versión 202605: Añadido campo INDCOSA de tipo NUMBER
+create or replace PROCEDURE build_aggregates IS
+    BEGIN
+        -- Agregado por PERSONA
+        BEGIN
+            EXECUTE IMMEDIATE 'DROP TABLE usr_agg_contratos_persona PURGE';
+        EXCEPTION
+            WHEN OTHERS THEN
+                IF SQLCODE != -942 THEN
+                    RAISE;
+                END IF;
+        END;
+
+        EXECUTE IMMEDIATE '
+            CREATE TABLE usr_agg_contratos_persona AS
+            SELECT
+                persona_id,
+                COUNT(DISTINCT contrato_id) AS num_contratos,
+                SUM(importe_mensual)        AS importe_total,
+                MAX(INDCOSA)               AS INDCOSA
+            FROM usr_fct_contrato_persona
+            GROUP BY persona_id
+        ';
+
+        -- Agregado por TIPO_PRODUCTO
+        BEGIN
+            EXECUTE IMMEDIATE 'DROP TABLE usr_agg_contratos_producto PURGE';
+        EXCEPTION
+            WHEN OTHERS THEN
+                IF SQLCODE != -942 THEN
+                    RAISE;
+                END IF;
+        END;
+
+        EXECUTE IMMEDIATE '
+            CREATE TABLE usr_agg_contratos_producto AS
+            SELECT
+                tipo_producto,
+                COUNT(DISTINCT contrato_id) AS num_contratos,
+                SUM(importe_mensual)        AS importe_total,
+                MAX(INDCOSA)               AS INDCOSA
+            FROM usr_fct_contrato_persona
+            GROUP BY tipo_producto
+        ';
+    END build_aggregates;
